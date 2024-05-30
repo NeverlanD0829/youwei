@@ -2,13 +2,17 @@ import os
 import datetime
 import torchsummary
 import torch.optim as optim
+import json
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 from nets import get_network
-from nets.MobileNetV2 import *
+from nets.MobileNetV2 import MobileNetV2
 from dataset import MyDataset
 from thop import profile
+
 
 NUM_FOLDS = 3
 BATCH_SIZE = 64
@@ -63,7 +67,7 @@ def main():
     epochs = 300
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime('%Y-%m-%d-%H-%M')
-    folder_name = f'model/CNN/{timestamp}{"-"}{net_name}/'
+    folder_name = f'/home/chen/Desktop/data/train_data/{timestamp}{"-"}{net_name}/'
     os.makedirs(folder_name, exist_ok=True)
     schedule = StepLR(optimizer, step_size=40, gamma=0.5)
 
@@ -98,8 +102,9 @@ def main():
         # 使用MyDataset的数据加载器
         train_dataset = TensorDataset(train_data, train_labels)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-
         prev_epoch_loss = float('inf')
+        data_list=[]
+
 
         for i in range(epochs):
             train_loss = train_model(model, train_loader, optimizer, criterion, device)
@@ -111,10 +116,26 @@ def main():
                 torch.save(model.state_dict(),
                            f'{folder_name}/fold_{fold + 1}_epoch_{i + 1}_test_loss_{round(prev_epoch_loss.item(), 9)}.pth')
             with tqdm(total=epochs, desc=f"Fold {fold + 1}/{NUM_FOLDS}", unit="epoch") as epoch_t:
-                epoch_t.set_postfix(Train_Loss=f"{train_loss:.6f}",
-                                    Test_Loss=f"{test_loss.item():.6f}",
-                                    Prev_Epoch_Loss=f"{prev_epoch_loss.item():.6f}")
+                epoch_t.set_postfix(Train_Loss=f"{train_loss:.9f}",
+                                    Test_Loss=f"{test_loss.item():.9f}",
+                                    Prev_Epoch_Loss=f"{prev_epoch_loss.item():.9f}")
                 epoch_t.update(i)
+
+                file_name = f'{timestamp}{"-"}{net_name}' + ".json"
+                data = {
+                    "epoch": f"fold_{fold + 1}_epoch_{i + 1}",
+                    "Train_Loss": f"{train_loss:.9f}",
+                    "Test_Loss": f"{test_loss.item():.9f}",
+                    "Prev_Epoch_Loss": f"{prev_epoch_loss.item():.9f}"
+                }
+                data_list.append(data)
+                # with open(os.path.join(folder_name,file_name), 'a') as f:
+                #     json.dump(data, f,indent=4)
+                #     f.write('\n')
+            sorted_data=sorted(data_list,key=lambda x:float(x["Test_Loss"]))
+            sorted_file_name=f'{timestamp}{"-"}{net_name}_sorted.json'
+            with open(os.path.join(folder_name,sorted_file_name),'w')as f:
+                json.dump(sorted_data,f,indent=4)
 
 
 if __name__ == '__main__':

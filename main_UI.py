@@ -1,3 +1,4 @@
+
 import shutil                                                            #  复制、移动、重命名和删除文件或目录
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 图片显示的大小，初始宽500，高500
         self.width = 300
-        self.height = 300
+        self.height = 260
         pix_rgb = QPixmap("images/UI/img.png")
         pix_rgb.scaled(self.width, self.height, Qt.KeepAspectRatio)         # 使用 scaled 方法对图像进行  按比例 缩放
         self.label_img.setPixmap(pix_rgb)
@@ -77,7 +78,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.webcam = True
         self.stopEvent.clear()
         # self.model = self.model_load(weights="model/CNN/2023-12-26-22-20-MobileNetV2/fold_3_epoch_30_test_loss_6.66e-07.pth",device=self.device)                # 默认情况下的权重文件及设备
-        self.model = self.model_load()
+        # self.model = self.model_load(weights="/home/chen/Desktop/data/train_data/2024-05-16-10-08-MobileNetV2/fold_3_epoch_1_test_loss_3.03e-07.pth",device=self.device)
 
         # 图片和视频检测前后数据保存,类的初始化部分，用于设置一些与视频处理相关的属性。
         self.output_folder = 'output/'
@@ -88,7 +89,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @torch.no_grad()                                                        #装饰器，装饰的函数或代码块中的所有运算设置为不计算梯度
     def model_load(self, weights="", device=''):
         model = MobileNetV2()
-        model.load_state_dict(torch.load('model/CNN/2023-12-26-22-20-MobileNetV2/fold_3_epoch_30_test_loss_6.66e-07.pth'), strict=False)
+        model.load_state_dict(torch.load('/home/chen/Desktop/data/train_data/2024-05-16-10-08-MobileNetV2/fold_3_epoch_1_test_loss_3.03e-07.pth'), strict=False)
         print("深度学习模型加载完成!")
         return model
 

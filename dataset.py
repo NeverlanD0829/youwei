@@ -1,11 +1,8 @@
 import cv2
 import csv
 import numpy as np
-import xlrd
-import random
 import os
 from tqdm import tqdm
-import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
@@ -31,21 +28,18 @@ class MyDataset(Dataset):
             return [], []
 
         for i in tqdm(range(1, 51), desc='Load Image', unit='Image'):
-            dirs = os.listdir(f"./Dataset/{i}")
+            dirs = os.listdir(f"/home/chen/Desktop/data/Dataset/{i}")
             for pic_name in dirs:
-                pic_dir = f"./Dataset/{i}/{pic_name}"
+                pic_dir = f"/home/chen/Desktop/data/Dataset/{i}/{pic_name}"
                 img = cv2.imread(pic_dir)
                 img = cv2.resize(img, (300, 300))
                 b, g, r = cv2.split(img)
                 thresh, img2 = cv2.threshold(g, 90, 0, cv2.THRESH_TOZERO)
                 img_normalized = img2 / 255.0
-                label_index = int((i - 1) % 10 + 2)
-                label_value = labels_dict.get(label_index, 0.0)
+                label_index = i
+                label_value = labels_dict.get(label_index)
                 data.append(img_normalized)
                 labels.append(label_value)
-
-
-
         return np.array(data, dtype=np.float32), np.array(labels, dtype=np.float32)
 
     def __len__(self):

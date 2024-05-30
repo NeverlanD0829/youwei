@@ -6,7 +6,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 # Read the Excel file
 workbook = xlrd.open_workbook('单种报告fps01.xls')
 
-# Initialize lists to store all true values and predicted values
+# Initialize lists to store all true values and predicted value`s
 true_values_all = []
 predicted_values_all = []
 
@@ -38,7 +38,7 @@ mre = np.mean(np.abs((true_values_all - predicted_values_all) / true_values_all)
 # Create an R2 plot
 plt.figure(figsize=(8, 6))
 plt.scatter(true_values_all, predicted_values_all, alpha=0.5)
-plt.title(f'R2 Plot (Overall R2 = {overall_r2:.4f}, Overall MAE = {overall_mae:.4f}, MRE = {mre:.4f})')
+plt.title(f'R2 Plot (Overall R2 = {overall_r2:.9f}, Overall MAE = {overall_mae:.9f}, MRE = {mre:.9f})')
 plt.xlabel('True Values')
 plt.ylabel('Predicted Values')
 plt.grid(False)
@@ -47,6 +47,6 @@ plt.grid(False)
 plt.show()
 
 # Output the overall R2 score, MAE, and MRE
-print(f'Overall R2: {overall_r2:.4f}')
-print(f'Overall MAE: {overall_mae:.4f}')
-print(f'MRE: {mre:.4f}')
+print(f'Overall R2: {overall_r2:.9f}')
+print(f'Overall MAE: {overall_mae:.9f}')
+print(f'MRE: {mre:.9f}')

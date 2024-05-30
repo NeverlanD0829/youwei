@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'main_window.ui'
+# Form implementation generated from reading ui file '/home/chen/Desktop/Grasp_Weight_Estimation_master/main_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.10
 #
@@ -49,13 +49,14 @@ class Ui_MainWindow(object):
         self.horizontalLayout_9 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_9.setObjectName("horizontalLayout_9")
         self.label_img = QtWidgets.QLabel(self.tab)
+        self.label_img.setEnabled(False)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_img.sizePolicy().hasHeightForWidth())
         self.label_img.setSizePolicy(sizePolicy)
-        self.label_img.setMinimumSize(QtCore.QSize(300, 300))
-        self.label_img.setMaximumSize(QtCore.QSize(300, 300))
+        self.label_img.setMinimumSize(QtCore.QSize(300, 260))
+        self.label_img.setMaximumSize(QtCore.QSize(300, 260))
         self.label_img.setObjectName("label_img")
         self.horizontalLayout_9.addWidget(self.label_img)
         self.label_img_d = QtWidgets.QLabel(self.tab)
@@ -64,8 +65,8 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_img_d.sizePolicy().hasHeightForWidth())
         self.label_img_d.setSizePolicy(sizePolicy)
-        self.label_img_d.setMinimumSize(QtCore.QSize(300, 300))
-        self.label_img_d.setMaximumSize(QtCore.QSize(300, 300))
+        self.label_img_d.setMinimumSize(QtCore.QSize(300, 260))
+        self.label_img_d.setMaximumSize(QtCore.QSize(300, 260))
         self.label_img_d.setObjectName("label_img_d")
         self.horizontalLayout_9.addWidget(self.label_img_d)
         self.gridLayout.addLayout(self.horizontalLayout_9, 1, 0, 1, 1)
@@ -238,7 +239,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.tabWidget)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 650, 23))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 650, 28))
         self.menubar.setObjectName("menubar")
         self.menu = QtWidgets.QMenu(self.menubar)
         self.menu.setObjectName("menu")

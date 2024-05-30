@@ -1,4 +1,3 @@
-# import tensorflow as tf
 import numpy as np
 import cv2
 import xlwt
@@ -12,50 +11,14 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.models as models
-from nets.MobileNetV2 import *
 from nets import get_network
-from nets.AdvanceMobileNetV2 import *
-from dataset2 import MyDataset
+from nets.MobileNetV2 import MobileNetV2
+from dataset import MyDataset
 # from nets.MobileNet_torch import *
+from torchvision import transforms
 
-test_pic_dir = "./Dataset_D/"
 
-
-def load_data(self):
-    data = []
-    labels = []
-    labels_csv_file = 'data_label.csv'
-    try:
-        with open(labels_csv_file, 'r') as csvfile:
-            csv_reader = csv.reader(csvfile)
-            next(csv_reader)  # Skip the header row
-            labels_dict = {int(row[0]): float(row[1]) for row in csv_reader}
-    except FileNotFoundError:
-        print(f"Error: File '{labels_csv_file}' not found.")
-        return [], []
-
-    for i in tqdm(range(1, 51), desc='Load Image', unit='Image'):
-        dirs = os.listdir(f"./Dataset_D/{i}/color/")
-        for pic_name in dirs:
-            rgb_dir = f"./Dataset_D/{i}/color/{pic_name}"
-            img = cv2.imread(rgb_dir)
-            img2 = cv2.resize(img, (300, 300))
-            # b, g, r = cv2.split(img)
-            # thresh, img2 = cv2.threshold(g, 90, 0, cv2.THRESH_TOZERO)
-            img_rgb = img2 / 255.0
-
-            d_dir = f"./Dataset_D/{i}/depth/{pic_name}"
-            img_d = cv2.imread(d_dir, cv2.IMREAD_GRAYSCALE)
-            img_d = cv2.resize(img_d, (300, 300))
-            img_d = img_d / 255.0
-            img_d = img_d[:, :, np.newaxis]
-            img_rgbd_normalized = np.concatenate([img_rgb, img_d], axis=-1)
-            img_rgbd_normalized = np.transpose(img_rgbd_normalized, (2, 0, 1))
-            label_value = labels_dict.get(i, 0)
-            data.append(img_rgbd_normalized)
-            labels.append(label_value)
-    return np.array(data, dtype=np.float32), np.array(labels, dtype=np.float32)
-
+test_pic_dir = "/home/chen/Desktop/data/Dataset/"
 
 def main():
     style0 = xlwt.easyxf('font: name Times New Roman, color-index red, bold on', num_format_str='#,##0.00')
@@ -64,30 +27,24 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the model checkpoint
-    check_path = 'model/CNN/2024-01-13-23-41-AdvanceMobileNetV2/fold_2_epoch_254_test_loss_2.307e-06.pth'
-    model = AdvanceMobileNetV2()
-    model.load_state_dict(torch.load(check_path), strict=False)
+    check_path = '/home/chen/Desktop/data/train_data/2024-05-16-10-08-MobileNetV2/fold_3_epoch_1_test_loss_3.03e-07.pth'
+    model = MobileNetV2()
+    model.load_state_dict(torch.load(check_path),strict=False)
     model.to(device)
     model.eval()
 
-    # Define the input tensors
-    X = torch.randn(1, 1, 300, 300).to(device)  # Replace with your input shape
-    X.requires_grad = False  # Set to True if you need gradients
-
-    # Pass the input through the model
-    with torch.no_grad():
-        result = model(X)
-
     # Initialize real_data (replace with your initialization method)
-    real_data =
+    real_weight =[]
+    # 定义数据转换
+    transform = transforms.Compose([
+        transforms.ToTensor(),  # 将图像转换为PyTorch张量，并且将值缩放到[0, 1]
+    ])
 
-    # Now you can work with 'result' and 'real_data' in PyTorch
-
-    for duck_num in tqdm(range(1,51),desc='Saving Data',unit='File'):
-        dirs = os.listdir(test_pic_dir + str(duck_num))
+    for sample_num in tqdm(range(1,56),desc='Saving Data',unit='File'):
+        dirs = os.listdir(test_pic_dir + str(sample_num))
         dirs = sorted(dirs)
         num = 1
-        ws = wb.add_sheet(str(duck_num))
+        ws = wb.add_sheet(str(sample_num))
         ws.write(0, 0, '序号')
         ws.write(0, 1, '预测值')
         ws.write(0, 2, '真实值')
@@ -98,9 +55,28 @@ def main():
         real_weight_sum = 0.0  # 用于累积真实值的和
         fps_sum = 0.0  # 用于累积真实值的和
 
+        labels_csv_file = 'data_label.csv'
+        try:
+            with open(labels_csv_file, 'r') as csvfile:
+                csv_reader = csv.reader(csvfile)
+                next(csv_reader)  # Skip the header row
+                labels_dict = {int(row[0]): float(row[1]) for row in csv_reader}
+                label_index = sample_num
+                label_value = labels_dict.get(label_index)
+                real_weight.append(label_value)
+        except FileNotFoundError:
+            print(f"Error: File '{labels_csv_file}' not found.")
+
         for pic in dirs:
-            test_pic = load_data(duck_num, pic)
-            test_pic = torch.from_numpy(test_pic).unsqueeze(0).to(device)
+            pic_dir = os.path.join(test_pic_dir, str(sample_num), pic)
+            img = cv2.imread(pic_dir)
+            img = cv2.resize(img, (300, 300))
+            b, g, r = cv2.split(img)
+            thresh, img2 = cv2.threshold(g, 90, 0, cv2.THRESH_TOZERO)
+            img_normalized = img2 / 255.0
+            img_tensor = transform(img_normalized).float()
+            img_tensor = img_tensor.unsqueeze(0).to(device)
+
 
             # Measure time for forward pass
             start_time = torch.cuda.Event(enable_timing=True)
@@ -108,7 +84,7 @@ def main():
             start_time.record()
 
             with torch.no_grad():
-                a = model(test_pic)
+                a = model(img_tensor)
                 b = a[0].cpu().numpy()
                 pre_weight = b[0]
 
@@ -118,13 +94,13 @@ def main():
             fps = elapsed_time  # Convert milliseconds to seconds
 
             pre_weight_sum += pre_weight
-            real_weight_sum += real_data[duck_num - 1]
+            real_weight_sum += real_weight[sample_num - 1]
             fps_sum += fps
 
             ws.write(num, 0, int(pic.split('.')[0]))
             ws.write(num, 1, float(pre_weight))
-            ws.write(num, 2, real_data[duck_num - 1])
-            loss = abs(float(pre_weight) - float(real_data[duck_num - 1]))
+            ws.write(num, 2, real_weight[sample_num - 1])
+            loss = abs(float(pre_weight) - float(real_weight[sample_num - 1]))
             ws.write(num, 3, loss)
             ws.write(num, 4, fps)
             pre_weight = None
@@ -140,7 +116,7 @@ def main():
         ws.write(num, 4, fps_sum/len(dirs))
 
         wb.save('单种报告fps01.xls')
-    tqdm.write(f'finish ' + str(duck_num) + '/50')
+    tqdm.write(f'finish ' + str(sample_num) + '/55')
 
 
 if __name__ == '__main__':

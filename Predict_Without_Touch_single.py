@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import os
-from nets.MobileNetV2 import *
+from nets.MobileNetV2 import MobileNetV2
 
 
 

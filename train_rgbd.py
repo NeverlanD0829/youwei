@@ -66,7 +66,7 @@ def main():
     epochs = 300
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime('%Y-%m-%d-%H-%M')
-    folder_name = f'model/CNN/{timestamp}{"-"}{net_name}/'
+    folder_name = f'/home/chen/Desktop/data/train_data/{timestamp}{"-"}{net_name}/'
     os.makedirs(folder_name, exist_ok=True)
     schedule = StepLR(optimizer, step_size=30, gamma=0.5)
 
