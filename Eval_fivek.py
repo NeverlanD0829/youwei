@@ -74,17 +74,17 @@ def main():                                            #恢复了训练好的模
 
     # Now you can work with 'result' and 'real_data' in PyTorch
 
-    for duck_num in range(1,51):
-        dirs = os.listdir(test_pic_dir + str(duck_num))
+    for sample_num in range(1,51):
+        dirs = os.listdir(test_pic_dir + str(sample_num))
         dirs = sorted(dirs)
         num = 1
-        ws = wb.add_sheet(str(duck_num))
+        ws = wb.add_sheet(str(sample_num))
         ws.write(0, 0, '序号')
         ws.write(0, 1, '预测值')
         ws.write(0, 2, '真实值')
         ws.write(0, 3, '误差')
         for pic in dirs:
-            test_pic = pic_init(duck_num, pic)
+            test_pic = pic_init(sample_num, pic)
             test_pic = torch.from_numpy(test_pic).unsqueeze(0).to(device)
             with torch.no_grad():
                 a = model(test_pic)
@@ -92,12 +92,12 @@ def main():                                            #恢复了训练好的模
                 pre_weight = b[0]
             ws.write(num, 0, int(pic.split('.')[0]))
             ws.write(num, 1, float(pre_weight))
-            ws.write(num, 2, real_data[duck_num - 1])
-            loss = abs(float(pre_weight) - float(real_data[duck_num - 1]))
+            ws.write(num, 2, real_data[sample_num - 1])
+            loss = abs(float(pre_weight) - float(real_data[sample_num - 1]))
             ws.write(num, 3, loss)
             pre_weight = None
             num = num + 1
-        print('finish ' + str(duck_num) + '/50!')
+        print('finish ' + str(sample_num) + '/50!')
 
         wb.save('原始模型单种报告1.xls')
         print('Save the report.xls')

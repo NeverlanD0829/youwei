@@ -87,7 +87,7 @@ def main():
     torchsummary.summary(model, input_size=summary_input)
 
     # Calculate FLOPs using thop
-    input_data = torch.randn(BATCH_SIZE, 1, input_size, input_size).to(device)
+    input_data = torch.randn(BATCH_SIZE, 4, input_size, input_size).to(device)
     flops, params = profile(model, inputs=(input_data,))
 
     print(f"Number of FLOPs: {flops}")

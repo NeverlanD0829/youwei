@@ -2,15 +2,15 @@ import cv2
 import numpy as np
 
 # 读取图像
-image = cv2.imread('../Dataset/4/56.jpg')
+image = cv2.imread('/home/chen/Desktop/data/Dataset/1/16.jpg')
 
 # 分离通道
 blue_channel, green_channel, red_channel = cv2.split(image)
 
 # 设置阈值
-thresh_value_blue = 50  # 蓝色通道阈值
-thresh_value_green = 50  # 绿色通道阈值
-thresh_value_red = 6  # 红色通道阈值
+thresh_value_blue = 90  # 蓝色通道阈值
+thresh_value_green = 90  # 绿色通道阈值
+thresh_value_red = 90  # 红色通道阈值
 
 # 对蓝色通道进行阈值处理
 _, blue_thresh = cv2.threshold(blue_channel, thresh_value_blue, 255, cv2.THRESH_BINARY)

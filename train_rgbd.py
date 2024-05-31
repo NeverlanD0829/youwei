@@ -2,18 +2,21 @@ import os
 import datetime
 import torchsummary
 import torch.optim as optim
+import json
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 from nets import get_network
-from nets.AdvanceMobileNetV2 import *
-from dataset2 import MyDataset
+from nets.MobileNetV2 import MobileNetV2
+from dataset import MyDataset
 from thop import profile
 
-NUM_FOLDS = 4
-BATCH_SIZE = 16
-input_size = 300
 
+NUM_FOLDS = 3
+BATCH_SIZE = 8
+input_size = 300
 
 def train_model(model, train_loader, optimizer, criterion, device):
     model.train()
@@ -26,6 +29,7 @@ def train_model(model, train_loader, optimizer, criterion, device):
             optimizer.zero_grad()
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = model(inputs)
+            outputs = outputs.view(-1)
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
@@ -40,12 +44,12 @@ def eval_model(model, test_data, test_label, criterion, device):
     model.eval()
     num_batches = len(test_label) // BATCH_SIZE + int(len(test_label) % BATCH_SIZE > 0)
 
-    with tqdm(total=num_batches unit="batch") as t:
+    with tqdm(total=num_batches, desc="Evaluating", unit="batch") as t:
         test_outputs_list = []
         with torch.no_grad():
             for j in range(0, len(test_label), BATCH_SIZE):
                 test_batch = test_data[j:j + BATCH_SIZE].to(device)
-                test_batch_outputs = model(test_batch)
+                test_batch_outputs = model(test_batch).view(-1)
                 test_outputs_list.append(test_batch_outputs)
                 t.update(1)
 
@@ -54,38 +58,40 @@ def eval_model(model, test_data, test_label, criterion, device):
     test_loss = criterion(test_outputs, test_label.to(device))
     return test_loss
 
-
 def main():
-
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    net_name = 'AdvanceMobileNetV2'
+    net_name = 'MobileNetV2'
     net = get_network(net_name)
     model = net().to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-    epochs = 300
+    epochs = 100
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime('%Y-%m-%d-%H-%M')
     folder_name = f'/home/chen/Desktop/data/train_data/{timestamp}{"-"}{net_name}/'
     os.makedirs(folder_name, exist_ok=True)
-    schedule = StepLR(optimizer, step_size=30, gamma=0.5)
+    schedule = StepLR(optimizer, step_size=20, gamma=0.5)
 
     # Split the dataset into folds for cross-validation
     datasets = MyDataset()
     data_loader = DataLoader(datasets, batch_size=BATCH_SIZE, shuffle=True)
     all_data_img, all_data_labels = zip(*[(data, labels) for data, labels in data_loader])
-    data_img = torch.cat(all_data_img, dim=0)
-    data_labels = torch.cat(all_data_labels, dim=0).unsqueeze(1)
+    # data_img = torch.cat(all_data_img, dim=0).unsqueeze(1)
+    # data_labels = torch.cat(all_data_labels, dim=0).unsqueeze(1)
+
+    data_img = torch.cat(all_data_img, dim=0).permute(0,3,1,2)
+    data_labels = torch.cat(all_data_labels, dim=0).view(-1)
 
     dataset_folds = torch.chunk(data_img, NUM_FOLDS, dim=0)
     labels_folds = torch.chunk(data_labels, NUM_FOLDS, dim=0)
 
     # Print model summary using torchsummary
     print(f'===============>Building {net_name}‘s model<===============')
-    summary_input = (4, input_size, input_size)                                 # 单通道
+    summary_input = (2, input_size, input_size)                                 # 单通道
     torchsummary.summary(model, input_size=summary_input)
+
     # Calculate FLOPs using thop
-    input_data = torch.randn(BATCH_SIZE, 4, input_size, input_size).to(device)
+    input_data = torch.randn(BATCH_SIZE, 2, input_size, input_size).to(device)
     flops, params = profile(model, inputs=(input_data,))
 
     print(f"Number of FLOPs: {flops}")
@@ -100,8 +106,9 @@ def main():
         # 使用MyDataset的数据加载器
         train_dataset = TensorDataset(train_data, train_labels)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-
         prev_epoch_loss = float('inf')
+        data_list=[]
+
 
         for i in range(epochs):
             train_loss = train_model(model, train_loader, optimizer, criterion, device)
@@ -113,10 +120,26 @@ def main():
                 torch.save(model.state_dict(),
                            f'{folder_name}/fold_{fold + 1}_epoch_{i + 1}_test_loss_{round(prev_epoch_loss.item(), 9)}.pth')
             with tqdm(total=epochs, desc=f"Fold {fold + 1}/{NUM_FOLDS}", unit="epoch") as epoch_t:
-                epoch_t.set_postfix(Train_Loss=f"{train_loss:.6f}",
-                                    Test_Loss=f"{test_loss.item():.6f}",
-                                    Prev_Epoch_Loss=f"{prev_epoch_loss.item():.6f}")
+                epoch_t.set_postfix(Train_Loss=f"{train_loss:.9f}",
+                                    Test_Loss=f"{test_loss.item():.9f}",
+                                    Prev_Epoch_Loss=f"{prev_epoch_loss.item():.9f}")
                 epoch_t.update(i)
+
+                file_name = f'{timestamp}{"-"}{net_name}' + ".json"
+                data = {
+                    "epoch": f"fold_{fold + 1}_epoch_{i + 1}",
+                    "Train_Loss": f"{train_loss:.9f}",
+                    "Test_Loss": f"{test_loss.item():.9f}",
+                    "Prev_Epoch_Loss": f"{prev_epoch_loss.item():.9f}"
+                }
+                data_list.append(data)
+                # with open(os.path.join(folder_name,file_name), 'a') as f:
+                #     json.dump(data, f,indent=4)
+                #     f.write('\n')
+            sorted_data=sorted(data_list,key=lambda x:float(x["Test_Loss"]))
+            sorted_file_name=f'{timestamp}{"-"}{net_name}_sorted.json'
+            with open(os.path.join(folder_name,sorted_file_name),'w')as f:
+                json.dump(sorted_data,f,indent=4)
 
 
 if __name__ == '__main__':
