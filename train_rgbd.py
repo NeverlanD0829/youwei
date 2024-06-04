@@ -60,6 +60,7 @@ def eval_model(model, test_data, test_label, criterion, device):
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(device)
     net_name = 'MobileNetV2'
     net = get_network(net_name)
     model = net().to(device)
@@ -76,10 +77,10 @@ def main():
     datasets = MyDataset()
     data_loader = DataLoader(datasets, batch_size=BATCH_SIZE, shuffle=True)
     all_data_img, all_data_labels = zip(*[(data, labels) for data, labels in data_loader])
-    # data_img = torch.cat(all_data_img, dim=0).unsqueeze(1)
+    data_img = torch.cat(all_data_img, dim=0).permute(0,3,1,2)
     # data_labels = torch.cat(all_data_labels, dim=0).unsqueeze(1)
 
-    data_img = torch.cat(all_data_img, dim=0).permute(0,3,1,2)
+    # data_img = torch.cat(all_data_img, dim=0).permute(0,3,1,2)
     data_labels = torch.cat(all_data_labels, dim=0).view(-1)
 
     dataset_folds = torch.chunk(data_img, NUM_FOLDS, dim=0)
@@ -87,11 +88,11 @@ def main():
 
     # Print model summary using torchsummary
     print(f'===============>Building {net_name}‘s model<===============')
-    summary_input = (2, input_size, input_size)                                 # 单通道
+    summary_input = (4, input_size, input_size)                                 # 单通道
     torchsummary.summary(model, input_size=summary_input)
 
     # Calculate FLOPs using thop
-    input_data = torch.randn(BATCH_SIZE, 2, input_size, input_size).to(device)
+    input_data = torch.randn(BATCH_SIZE, 4, input_size, input_size).to(device)
     flops, params = profile(model, inputs=(input_data,))
 
     print(f"Number of FLOPs: {flops}")
@@ -133,6 +134,7 @@ def main():
                     "Prev_Epoch_Loss": f"{prev_epoch_loss.item():.9f}"
                 }
                 data_list.append(data)
+                print(device)
                 # with open(os.path.join(folder_name,file_name), 'a') as f:
                 #     json.dump(data, f,indent=4)
                 #     f.write('\n')

@@ -133,7 +133,7 @@ class MobileNetV2(nn.Module):
             raise ValueError("inverted_residual_setting should be non-empty ""or a 4-element list, got {}".format(inverted_residual_setting))
 
         # conv1 layer
-        features = [ConvBNReLU(2, input_channel, stride=2)]
+        features = [ConvBNReLU(4, input_channel, stride=2)]
 
         # building inverted residual blocks
         for t, c, n, s in inverted_residual_setting:
