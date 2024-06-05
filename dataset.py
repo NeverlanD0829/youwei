@@ -11,7 +11,7 @@ class MyDataset(Dataset):
         self.data, self.labels = self.load_data()
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize((300, 300)),
+            transforms.Resize((352, 352)),
             transforms.ToTensor()])
 
     def load_data(self):
@@ -42,14 +42,14 @@ class MyDataset(Dataset):
                 rgb_pic = f"{rgb_dir}/{j}.png"
                 depth_pic = f"{depth_dir}/{j}.png"
                 img_rgb = cv2.imread(rgb_pic)
-                img_rgb = cv2.resize(img_rgb, (300, 300))
+                img_rgb = cv2.resize(img_rgb, (352, 352))
                 # b, g, r = cv2.split(img_rgb)
                 # thresh, img_rgb = cv2.threshold(g, 90, 0, cv2.THRESH_TOZERO)
                 img_depth = cv2.imread(depth_pic,cv2.IMREAD_GRAYSCALE)
-                img_depth = cv2.resize(img_depth, (300, 300))
+                img_depth = cv2.resize(img_depth, (352, 352))
                 
                 # 创建4通道数组
-                concatenated_image = np.zeros((300, 300, 4), dtype=np.uint8)
+                concatenated_image = np.zeros((352, 352, 4), dtype=np.uint8)
                 concatenated_image[:,:,0:3] = img_rgb  # 前三个通道为RGB图像
                 concatenated_image[:,:,3] = img_depth  # 第四个通道为深度图像
 

@@ -12,7 +12,8 @@ from nets import get_network
 from nets.MobileNetV2 import MobileNetV2
 from dataset import MyDataset
 from thop import profile
-
+from models.DCF_ResNet_models import DCF_ResNet
+from models.fusion import fusion
 
 NUM_FOLDS = 3
 BATCH_SIZE = 8
@@ -61,6 +62,12 @@ def eval_model(model, test_data, test_label, criterion, device):
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
+
+    model_rgb = DCF_ResNet()
+    model_d = DCF_ResNet()
+    model_fusion = fusion()
+
+    
     net_name = 'MobileNetV2'
     net = get_network(net_name)
     model = net().to(device)
