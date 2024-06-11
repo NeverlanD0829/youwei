@@ -15,7 +15,7 @@ from models.DCF_ResNet_models import DCF_ResNet
 from models.fusion import fusion
 from models.depth_calibration_models import depth_estimator, discriminator
 
-BATCH_SIZE = 4
+BATCH_SIZE = 6
 input_size = 352
 
 def train_model(model, model_discriminator, model_estimator, model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device):

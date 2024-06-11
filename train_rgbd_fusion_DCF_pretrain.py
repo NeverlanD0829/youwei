@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 import json
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
@@ -15,16 +16,16 @@ from models.DCF_ResNet_models import DCF_ResNet
 from models.fusion import fusion
 from models.depth_calibration_models import depth_estimator, discriminator
 
-BATCH_SIZE = 4
+BATCH_SIZE = 6
 input_size = 352
 
-def train_model(model, model_discriminator, model_estimator, model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device):
+def train_model(model, model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device):
     model.train()
-    model_estimator.train()
+    # model_estimator.train()
     model_rgb.train()
     model_d.train()
     model_fusion.train()
-    model_discriminator.train()
+    # model_discriminator.train()
     accumulated_loss = 0.0
     num_batches = len(train_loader)
 
@@ -38,15 +39,16 @@ def train_model(model, model_discriminator, model_estimator, model_rgb, model_d,
             inputs_d = inputs[:, 3, :, :].unsqueeze(1)  # 第四个通道作为inputs_d
             atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)  # model_rgb 的输入是[1, 3, 352, 352]
 
-            score = model_discriminator(inputs_d)
-            score = torch.softmax(score, dim=1)
-            x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
-            pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
-            depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
-                               + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
+            # score = model_discriminator(inputs_d)
+            # score = torch.softmax(score, dim=1)
+            # x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
+            # pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
+            # depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
+            #                    + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
 
-            depths = depth_calibrated
-            depths = torch.cat([depths, depths, depths], dim=1)
+            # depths = depth_calibrated
+            # depths = torch.cat([depths, depths, depths], dim=1)
+            depths = torch.cat([inputs_d, inputs_d, inputs_d], dim=1)
             atts_depth, dets_depth, x3_d, x4_d, x5_d = model_d(depths)
 
             # fusion
@@ -68,13 +70,13 @@ def train_model(model, model_discriminator, model_estimator, model_rgb, model_d,
     train_loss = accumulated_loss / num_batches
     return train_loss
 
-def eval_model(model, model_discriminator, model_estimator, model_rgb, model_d, model_fusion, test_data, test_label, criterion, device):
+def eval_model(model, model_rgb, model_d, model_fusion, test_data, test_label, criterion, device):
     model.eval()
-    model_estimator.eval()
+    # model_estimator.eval()
     model_rgb.eval()
     model_d.eval()
     model_fusion.eval()
-    model_discriminator.eval()
+    # model_discriminator.eval()
     num_batches = len(test_label) // BATCH_SIZE + int(len(test_label) % BATCH_SIZE > 0)
 
     with tqdm(total=num_batches, desc="Evaluating", unit="batch") as t:
@@ -87,15 +89,16 @@ def eval_model(model, model_discriminator, model_estimator, model_rgb, model_d, 
                 inputs_d = test_batch[:, 3, :, :].unsqueeze(1)  # 第四个通道作为inputs_d
                 atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)
 
-                score = model_discriminator(inputs_d)
-                score = torch.softmax(score, dim=1)
-                x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
-                pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
-                depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
-                                + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
+                # score = model_discriminator(inputs_d)
+                # score = torch.softmax(score, dim=1)
+                # x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
+                # pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
+                # depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
+                #                 + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
 
-                depths = depth_calibrated
-                depths = torch.cat([depths, depths, depths], dim=1)
+                # depths = depth_calibrated
+                # depths = torch.cat([depths, depths, depths], dim=1)
+                depths = torch.cat([inputs_d, inputs_d, inputs_d], dim=1)
                 atts_depth, dets_depth, x3_d, x4_d, x5_d = model_d(depths)
 
                 # fusion
@@ -119,17 +122,39 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    model_rgb = DCF_ResNet().to(device)
+    model_rgb = DCF_M().to(device)
     model_d = DCF_ResNet().to(device)
     model_fusion = fusion().to(device)
-    model_estimator = depth_estimator().to(device)
-    model_discriminator = discriminator(n_class=2).to(device)
+    # model_estimator = depth_estimator().to(device)
+    # model_discriminator = discriminator(n_class=2).to(device)
     
+    # 预训练权重
+    # model_rgb.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_rgb.pth.67"))
+    # model_d.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_depth.pth.67"))
+    model_fusion.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF.pth.67"))
+    # model_estimator.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_estimator.pth.67"))
+    # model_discriminator.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_dis.pth.67"))
+
+
     net_name = 'MobileNetV2'
     net = get_network(net_name)
     model = net().to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    # criterion = nn.MSELoss()
+    criterion = nn.SmoothL1Loss()
+    optimizer = optim.Adam(list(model.parameters()) + 
+                       list(model_rgb.parameters()) + 
+                       list(model_d.parameters()) + 
+                       list(model_fusion.parameters()), lr=0.001)
+    
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f'Total parameters in main model: {count_parameters(model)}')
+    print(f'Total parameters in model_rgb: {count_parameters(model_rgb)}')
+    print(f'Total parameters in model_d: {count_parameters(model_d)}')
+    print(f'Total parameters in model_fusion: {count_parameters(model_fusion)}')
+    print(f'Total parameters in optimizer: {sum(p.numel() for p in optimizer.param_groups[0]["params"])}')
+
     epochs = 400
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime('%Y-%m-%d-%H-%M')
@@ -154,8 +179,8 @@ def main():
     data_list = []
 
     for i in range(epochs):
-        train_loss = train_model(model, model_discriminator, model_estimator, model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device)
-        test_loss = eval_model(model, model_discriminator, model_estimator, model_rgb, model_d, model_fusion, test_data, test_label, criterion, device)
+        train_loss = train_model(model,  model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device)
+        test_loss = eval_model(model, model_rgb, model_d, model_fusion, test_data, test_label, criterion, device)
         schedule.step()
 
         if test_loss <= prev_epoch_loss:
