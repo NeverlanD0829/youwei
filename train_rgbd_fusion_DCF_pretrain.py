@@ -13,19 +13,18 @@ from nets.MobileNetV2 import MobileNetV2
 from dataset import MyDataset
 from thop import profile
 from models.DCF_ResNet_models import DCF_ResNet
+# from models.DCF_MobileNetv2_models import DCF_MobileNetV2
 from models.fusion import fusion
 from models.depth_calibration_models import depth_estimator, discriminator
 
-BATCH_SIZE = 6
+BATCH_SIZE = 3
 input_size = 352
 
 def train_model(model, model_rgb, model_d, model_fusion, train_loader, optimizer, criterion, device):
     model.train()
-    # model_estimator.train()
     model_rgb.train()
     model_d.train()
     model_fusion.train()
-    # model_discriminator.train()
     accumulated_loss = 0.0
     num_batches = len(train_loader)
 
@@ -39,15 +38,6 @@ def train_model(model, model_rgb, model_d, model_fusion, train_loader, optimizer
             inputs_d = inputs[:, 3, :, :].unsqueeze(1)  # 第四个通道作为inputs_d
             atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)  # model_rgb 的输入是[1, 3, 352, 352]
 
-            # score = model_discriminator(inputs_d)
-            # score = torch.softmax(score, dim=1)
-            # x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
-            # pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
-            # depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
-            #                    + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
-
-            # depths = depth_calibrated
-            # depths = torch.cat([depths, depths, depths], dim=1)
             depths = torch.cat([inputs_d, inputs_d, inputs_d], dim=1)
             atts_depth, dets_depth, x3_d, x4_d, x5_d = model_d(depths)
 
@@ -89,15 +79,6 @@ def eval_model(model, model_rgb, model_d, model_fusion, test_data, test_label, c
                 inputs_d = test_batch[:, 3, :, :].unsqueeze(1)  # 第四个通道作为inputs_d
                 atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)
 
-                # score = model_discriminator(inputs_d)
-                # score = torch.softmax(score, dim=1)
-                # x3_, x4_, x5_ = x3_r.detach(), x4_r.detach(), x5_r.detach()
-                # pred_depth = model_estimator(inputs_rgb, x3_, x4_, x5_)
-                # depth_calibrated = torch.mul(inputs_d, score[:, 0].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352)) \
-                #                 + torch.mul(pred_depth, score[:, 1].unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).expand(-1, 1, 352, 352))
-
-                # depths = depth_calibrated
-                # depths = torch.cat([depths, depths, depths], dim=1)
                 depths = torch.cat([inputs_d, inputs_d, inputs_d], dim=1)
                 atts_depth, dets_depth, x3_d, x4_d, x5_d = model_d(depths)
 
@@ -122,18 +103,16 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
 
-    model_rgb = DCF_M().to(device)
+    model_rgb = DCF_ResNet().to(device)
     model_d = DCF_ResNet().to(device)
     model_fusion = fusion().to(device)
     # model_estimator = depth_estimator().to(device)
     # model_discriminator = discriminator(n_class=2).to(device)
     
     # 预训练权重
-    # model_rgb.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_rgb.pth.67"))
-    # model_d.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_depth.pth.67"))
-    model_fusion.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF.pth.67"))
-    # model_estimator.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_estimator.pth.67"))
-    # model_discriminator.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_dis.pth.67"))
+    model_rgb.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_rgb.pth.67"))
+    model_d.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_depth.pth.67"))
+    # model_fusion.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF.pth.67"))
 
 
     net_name = 'MobileNetV2'
@@ -158,8 +137,8 @@ def main():
     epochs = 400
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime('%Y-%m-%d-%H-%M')
-    folder_name = f'/home/chen/Desktop/data/train_data/{timestamp}{"-"}{net_name}/'
-    os.makedirs(folder_name, exist_ok=True)
+    folder_name = f'/home/chen/Desktop/data/train_data/{timestamp}{"-"}{net_name}'
+    # os.makedirs(folder_name, exist_ok=True)
     schedule = StepLR(optimizer, step_size=40, gamma=0.5)
 
     datasets = MyDataset()
@@ -185,8 +164,13 @@ def main():
 
         if test_loss <= prev_epoch_loss:
             prev_epoch_loss = test_loss
-            torch.save(model.state_dict(),
-                       f'{folder_name}/epoch_{i + 1}_test_loss_{round(prev_epoch_loss.item(), 9)}.pth')
+            directory_name = f"Number {i} epoch"
+            save_folder = f'{folder_name}/{directory_name}'
+            os.makedirs(save_folder, exist_ok=True)
+            torch.save(model.state_dict(),f'{folder_name}/{directory_name}/model_weight_{round(prev_epoch_loss.item(), 9)}.pth')
+            torch.save(model_rgb.state_dict(),f'{folder_name}/{directory_name}/model_rgb_weight_{round(prev_epoch_loss.item(), 9)}.pth')
+            torch.save(model_d.state_dict(),f'{folder_name}/{directory_name}/model_d_weight_{round(prev_epoch_loss.item(), 9)}.pth')
+            torch.save(model_fusion.state_dict(),f'{folder_name}/{directory_name}/model_fusion_weight_{round(prev_epoch_loss.item(), 9)}.pth')
 
         with tqdm(total=epochs, desc="Epoch", unit="epoch") as epoch_t:
             epoch_t.set_postfix(Train_Loss=f"{train_loss:.9f}",

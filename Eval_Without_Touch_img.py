@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, mean_absolute_error
 
 # Read the Excel file
-workbook = xlrd.open_workbook('单种报告fps01.xls')
+workbook = xlrd.open_workbook('报告RGBD_dcf_test.xls')
 
 # Initialize lists to store all true values and predicted value`s
 true_values_all = []

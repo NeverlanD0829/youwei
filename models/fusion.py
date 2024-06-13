@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from models.HolisticAttention import HA
 # from HolisticAttention import HA
+from models.TransformerEncoder import GlobalTransformerEncoder
+from models.IAFF import iAFF
 
 class BasicConv2d(nn.Module):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
@@ -18,7 +20,7 @@ class BasicConv2d(nn.Module):
         x = self.bn(x)
         return x
 
-class RFB(nn.Module):
+class RFB(nn.Module):                                            # 多分支卷积模块,扩大感受野
     # RFB-like multi-scale module
     def __init__(self, in_channel, out_channel):
         super(RFB, self).__init__()
@@ -57,8 +59,6 @@ class RFB(nn.Module):
 
         x = self.relu(x_cat + self.conv_res(x))
         return x
-
-
 
 class aggregation(nn.Module):
     # dense aggregation, it can be replaced by other aggregation model, such as DSS, amulet, and so on.
@@ -117,28 +117,42 @@ class SCA(nn.Module):
 
         self.cross_conv = nn.Conv2d(32*2, 32, 1, padding=0)
 
+        self.transformer = GlobalTransformerEncoder(d_model=32,n_head=8,ffn_dim=48,encoder_layers=3)
+        self.iAFF = iAFF(channels=32 ,r =4 )
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 m.weight.data.normal_(std=0.01)
                 m.bias.data.fill_(0)
 
     def forward(self, x3_r,x3_d):
-        SCA_ca = self.channel_attention_rgb(self.squeeze_rgb(x3_r))
-        SCA_3_o = x3_r * SCA_ca.expand_as(x3_r)
+        # test = self.squeeze_rgb(x3_r)                                           # [1,32,1,1]
 
-        SCA_d_ca = self.channel_attention_depth(self.squeeze_depth(x3_d))
-        SCA_3d_o = x3_d * SCA_d_ca.expand_as(x3_d)
+        x3_r_trans = self.transformer(x3_r)
+        SCA_ca = self.channel_attention_rgb(self.squeeze_rgb(x3_r))             # [1,32,1,1]
+        SCA_3_o = x3_r * SCA_ca.expand_as(x3_r)                                 # [1,32,44,44]   expand_as 方法用于扩展 SCA_ca 的维度，使其与 x3_r 的维度相匹配  *:逐元素乘法
 
-        Co_ca3 = torch.softmax(SCA_ca + SCA_d_ca,dim=1)
+        x3_d_trans = self.transformer(x3_r)
+        SCA_d_ca = self.channel_attention_depth(self.squeeze_depth(x3_d))       # [1,32,1,1]
+        SCA_3d_o = x3_d * SCA_d_ca.expand_as(x3_d)                              # [1,32,44,44]
 
-        SCA_3_co = x3_r * Co_ca3.expand_as(x3_r)
-        SCA_3d_co= x3_d * Co_ca3.expand_as(x3_d)
+        x3_rd = torch.cat([x3_r,x3_d],dim = 1)                                      # [1,64,44,44]
 
-        CR_fea3_rgb = SCA_3_o + SCA_3_co
-        CR_fea3_d = SCA_3d_o + SCA_3d_co
+        Co_ca3 = torch.softmax(SCA_ca + SCA_d_ca,dim=1)                         # [1,32,1,1]
 
-        CR_fea3 = torch.cat([CR_fea3_rgb,CR_fea3_d],dim=1)
-        CR_fea3 = self.cross_conv(CR_fea3)
+        # SCA_3_co = x3_r * Co_ca3.expand_as(x3_r)                                # [1,32,44,44]
+        # SCA_3d_co= x3_d * Co_ca3.expand_as(x3_d)                                # [1,32,44,44]
+
+        SCA_3_co = x3_r_trans * Co_ca3.expand_as(x3_r)                                # [1,32,44,44]
+        SCA_3d_co= x3_d_trans * Co_ca3.expand_as(x3_d)  
+
+        # CR_fea3_rgb = SCA_3_o + SCA_3_co                                        # [1,32,44,44]
+        # CR_fea3_d = SCA_3d_o + SCA_3d_co                                        # [1,32,44,44]
+
+        CR_fea3_rgb = self.iAFF(SCA_3_o , SCA_3_co )                            # [1,32,44,44]
+        CR_fea3_d = self.iAFF(SCA_3d_o , SCA_3d_co )                            # [1,32,44,44]
+
+        CR_fea3 = torch.cat([CR_fea3_rgb,CR_fea3_d],dim=1)                      # [1,64,44,44]
+        CR_fea3 = self.cross_conv(CR_fea3)                                      # [1,32,44,44]
 
         return CR_fea3
 
@@ -228,13 +242,13 @@ class fusion(nn.Module):
 if __name__=="__main__":
     model = fusion()
 
-    r_3 = torch.zeros(1,32,44,44)
-    r_4 = torch.zeros(1,32,22,22)
-    r_5 = torch.zeros(1,32,11,11)
+    r_3 = torch.zeros(2,32,44,44)
+    r_4 = torch.zeros(2,32,22,22)
+    r_5 = torch.zeros(2,32,11,11)
 
-    d_3 = torch.zeros(1,32,44,44)
-    d_4 = torch.zeros(1,32,22,22)
-    d_5 = torch.zeros(1,32,11,11)
+    d_3 = torch.zeros(2,32,44,44)
+    d_4 = torch.zeros(2,32,22,22)
+    d_5 = torch.zeros(2,32,11,11)
 
     result = model(r_3,r_4,r_5,d_3,d_4,d_5)
-    print(result)
+    result = list(result)
