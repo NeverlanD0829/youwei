@@ -34,9 +34,9 @@ def train_model(model, model_rgb, model_d, model_fusion, train_loader, optimizer
             optimizer.zero_grad()
             inputs, targets = inputs.to(device), targets.to(device)
 
-            inputs_rgb = inputs[:, :3, :, :]  # 前三个通道作为inputs_rgb
-            inputs_d = inputs[:, 3, :, :].unsqueeze(1)  # 第四个通道作为inputs_d
-            atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)  # model_rgb 的输入是[1, 3, 352, 352]
+            inputs_rgb = inputs[:, :3, :, :]                                            # 前三个通道作为inputs_rgb
+            inputs_d = inputs[:, 3, :, :].unsqueeze(1)                                  # 第四个通道作为inputs_d
+            atts_rgb, dets_rgb, x3_r, x4_r, x5_r = model_rgb(inputs_rgb)                # model_rgb 的输入是[1, 3, 352, 352]
 
             depths = torch.cat([inputs_d, inputs_d, inputs_d], dim=1)
             atts_depth, dets_depth, x3_d, x4_d, x5_d = model_d(depths)
@@ -110,9 +110,9 @@ def main():
     # model_discriminator = discriminator(n_class=2).to(device)
     
     # 预训练权重
-    model_rgb.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_rgb.pth.67"))
-    model_d.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF_depth.pth.67"))
-    # model_fusion.load_state_dict(torch.load("/home/chen/Desktop/Project_Net/DCF/DCF_code/ckpt/DCF_Resnet/DCF.pth.67"))
+    model_rgb.load_state_dict(torch.load("/home/chen/Desktop/data/train_data/2024-06-14/Number_40_epoch/model_rgb_weight_3.8047e-05.pth"))
+    model_d.load_state_dict(torch.load("/home/chen/Desktop/data/train_data/2024-06-14/Number_40_epoch/model_d_weight_3.8047e-05.pth"))
+    model_fusion.load_state_dict(torch.load("/home/chen/Desktop/data/train_data/2024-06-14/Number_40_epoch/model_fusion_weight_3.8047e-05.pth"))
 
 
     net_name = 'MobileNetV2'

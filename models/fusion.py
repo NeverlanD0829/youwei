@@ -54,7 +54,7 @@ class RFB(nn.Module):                                            # 多分支卷�
         x1 = self.branch1(x)
         x2 = self.branch2(x)
         x3 = self.branch3(x)
-
+ 
         x_cat = self.conv_cat(torch.cat((x0, x1, x2, x3), 1))
 
         x = self.relu(x_cat + self.conv_res(x))
